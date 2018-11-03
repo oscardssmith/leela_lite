@@ -14,7 +14,7 @@ class UCTNode():
         self.parent = parent  # Optional[UCTNode]
         self.children = OrderedDict()  # Dict[move, UCTNode]
         self.prior = prior  # float
-        self.total_value = 0  # float
+        self.total_value = 0.  # float
         self.number_visits = 0  # int
 
     def Q(self):  # returns float
@@ -48,13 +48,12 @@ class UCTNode():
     def backup(self, value_estimate: float):
         current = self
         # Child nodes are multiplied by -1 because we want max(-opponent eval)
-        turnfactor = -1
+        value_estimate *= -1
         while current.parent is not None:            
             current.number_visits += 1
-            current.total_value += (value_estimate *
-                                    turnfactor)
+            current.total_value += value_estimate
             current = current.parent
-            turnfactor *= -1
+            value_estimate *= -1
         current.number_visits += 1
 
     def dump(self, move, C):
@@ -82,16 +81,8 @@ def UCT_search(board, num_reads, net=None, C=1.0):
     #for m, node in sorted(root.children.items(),
     #                      key=lambda item: (item[1].number_visits, item[1].Q())):
     #    node.dump(m, C)
+    #print(root.Q())
     return max(root.children.items(),
                key=lambda item: (item[1].number_visits, item[1].Q()))
 
 
-
-#num_reads = 10000
-#import time
-#tick = time.time()
-#UCT_search(GameState(), num_reads)
-#tock = time.time()
-#print("Took %s sec to run %s times" % (tock - tick, num_reads))
-#import resource
-#print("Consumed %sB memory" % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)

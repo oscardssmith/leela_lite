@@ -22,14 +22,14 @@ class NeuralNet:
             
         if result:
             if result == "1/2-1/2":
-                return dict(), 0.0
+                return dict(), 0.
             else:
                 # Always return -1.0 when checkmated
-                return dict(), -1.0
+                return dict(), -1.
             
         policy, value = self.net.evaluate(board)
         
-        value2 = (2.0*value)-1.0
+        value2 = 2.*value - 1.
         #print("value: ", value)
         #print("value2: ", value2)
         #sm = temp_softmax(policy.values(), sm=2.2)

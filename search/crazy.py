@@ -26,27 +26,29 @@ class CRAZYNode():
         return self.value
 
     def U(self):  # returns float
-        u = 0#self.prior * math.sqrt(self.parent.number_visits) / (1 + self.number_visits)
+        u =  math.sqrt(self.parent.number_visits) / (self.number_visits+1)
         var =  self.Q2 / (self.number_visits+1)
-        return u+var
+        return self.prior * (u + var)
     
     def get_prob_max(self):
         children = self.children.values()
         best_child = max(children, key=lambda child: child.Q())
         best_q, best_U = best_child.Q(), best_child.U()
-        return [math.e**(-1.7*(best_q - child.Q()) / (best_U+child.U())**.5) 
+        return [1/(self.number_visits+1) + math.e**(-1.7*(best_q - child.Q()) / (best_U+child.U())**.5)
                 for child in children]
     
-    def select_child(self):
+    def select_child(self, C):
+        return max(self.children.values(),
+                   key=lambda node: node.Q() + C*node.U())
         children = list(self.children.values())
         weights = self.get_prob_max()
         #print(weights)
         return choices(children, weights)[0]
 
-    def select_leaf(self):
+    def select_leaf(self, C):
         current = self
         while current.is_expanded and current.children:
-            current = current.select_child()
+            current = current.select_child(C)
         return current
 
     def expand(self, child_priors):
@@ -71,13 +73,13 @@ class CRAZYNode():
         while current is not None:
             current.number_visits += 1
             delta = reward - current.value
-            current.value = delta/current.number_visits
+            current.value += delta / current.number_visits
             delta2 = reward - current.value
             current.Q2 += delta * delta2
             current = current.parent
             reward *= -1
 
-    def dump(self, move, C):
+    def dump(self, move):
         print("---")
         print("move: ", move)
         print("total value: ", self.total_value)
@@ -85,7 +87,7 @@ class CRAZYNode():
         print("prior: ", self.prior)
         print("Q: ", self.Q())
         print("U: ", self.U())
-        print("BestMove: ", self.Q() + C * self.U())
+        print("BestMove: ", self.Q() + self.U())
         #print("math.sqrt({}) * {} / (1 + {}))".format(self.parent.number_visits,
         #      self.prior, self.number_visits))
         print("---")
@@ -94,18 +96,21 @@ def CRAZY_search(board, num_reads, net=None, C=1.0):
     assert(net != None)
     root = CRAZYNode(board)
     for _ in range(num_reads):
-        leaf = root.select_leaf()
-        child_priors, reward, u = net.evaluate(leaf.board)
+        leaf = root.select_leaf(C)
+        child_priors, reward = net.evaluate(leaf.board)
         leaf.expand(child_priors)
-        #reward = .5*(reward+1)
         leaf.backup(reward)
         
     #assert -1<=root.Q()<=1, [c.value for c in root.children.values()]
     #assert 0<=root.U()
+    total = 0
     for move, child in sorted(root.children.items(),
                           key=lambda item: -item[1].number_visits):
-        pass
+        print(move, child.Q2)
         #print(move, child.number_visits, child.Q(), child.U())
+        #total+=child.number_visits*child.Q()
+    #print(total/root.number_visits)
+    #print(root.Q())
     return max(root.children.items(),
                 key=lambda item: item[1].number_visits)
                #key=lambda item: item[1].Q() - item[1].U())
