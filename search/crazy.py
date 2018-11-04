@@ -27,9 +27,11 @@ class CRAZYNode():
 
     def U(self):  # returns float
         u =  math.sqrt(self.parent.number_visits) / (self.number_visits+1)
-        var =  self.Q2 / (self.number_visits+1)
-        return self.prior * (u + var)
+        return self.prior * (u + self.var())
     
+    def var(self):
+        return self.Q2 / (self.number_visits+1)
+        
     def get_prob_max(self):
         children = self.children.values()
         best_child = max(children, key=lambda child: child.Q())
@@ -38,8 +40,8 @@ class CRAZYNode():
                 for child in children]
     
     def select_child(self, C):
-        return max(self.children.values(),
-                   key=lambda node: node.Q() + C*node.U())
+        #return max(self.children.values(),
+        #           key=lambda node: node.Q() + C*node.U())
         children = list(self.children.values())
         weights = self.get_prob_max()
         #print(weights)
@@ -69,15 +71,14 @@ class CRAZYNode():
     def backup(self, reward: float):
         current = self
         # Child nodes are multiplied by -1 because we want max(-opponent eval)
-        reward = -reward
         while current is not None:
+            reward *= -1
             current.number_visits += 1
             delta = reward - current.value
             current.value += delta / current.number_visits
             delta2 = reward - current.value
             current.Q2 += delta * delta2
             current = current.parent
-            reward *= -1
 
     def dump(self, move):
         print("---")
@@ -106,7 +107,7 @@ def CRAZY_search(board, num_reads, net=None, C=1.0):
     total = 0
     for move, child in sorted(root.children.items(),
                           key=lambda item: -item[1].number_visits):
-        print(move, child.Q2)
+        pass
         #print(move, child.number_visits, child.Q(), child.U())
         #total+=child.number_visits*child.Q()
     #print(total/root.number_visits)
