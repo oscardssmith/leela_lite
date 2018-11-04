@@ -13,20 +13,23 @@ class BRUENode():
         self.parent = parent  # Optional[UCTNode]
         self.children = OrderedDict()  # Dict[move, UCTNode]
         self.prior = prior         # float
-        self.total_value = 0. # float
-        self.number_visits = 0     # int
-        self.uncertainty = .15
+        if parent is None:
+            self.value = 0.  # float
+        else:
+            self.value = -parent.value  # float
+        self.Q2 = 0.1 #float
+        self.number_visits = 0  # int
 
-    def Q(self):
-        return self.total_value/(self.number_visits+1)
+    def Q(self):  # returns float
+        return self.value
         
     def exploit(self):
         children = self.children
-        return max(self.children.values(), key=lambda node: node.prior+0.)
+        return max(self.children.Q(), key=lambda node: node.prior+0.)
     
     def explore(self):
         children = self.children
-        return choices(list(children.values()), [node.prior for node in children.values()])[0]
+        return choices(list(children.Q()), [node.prior for node in children.values()])[0]
     
     def expand(self, child_priors):
         for move, prior in child_priors.items():
@@ -41,14 +44,16 @@ class BRUENode():
         board.push_uci(move)
         return board
         
-    def backup(self, value_estimate: float):
+    def backup(self, reward: float):
         current = self
-        # Child nodes are multiplied by -1 because we want max(-opponent eval)
-        while current.parent is not None:
-            value_estimate *= -1
-            current.total_value += value_estimate
+        while current is not None:
+            reward *= -1
+            current.number_visits += 1
+            delta = reward - current.value
+            current.value += delta / current.number_visits
+            delta2 = reward - current.value
+            current.Q2 += delta * delta2
             current = current.parent
-        current.number_visits += 1
     
     def dump(self, move, C):
         print("---")
@@ -66,13 +71,14 @@ class BRUENode():
 def BRUE_search(board, num_reads, net=None, C=1.0):
     assert(net != None)
     root = BRUENode(board)
+    prev_depth = 400
     for n in range(num_reads):
-        switchingPoint = n%40
+        switchingPoint = min(prev_depth, (num_reads-n)%400)
         #print('run ', n, 'switch ', switchingPoint)
         level = 0
         current = root
         #print(current.number_visits)
-        while current.number_visits > 0 and current.uncertainty != 0:
+        while current.number_visits > 0 and len(current.children) > 0:
             if level < switchingPoint:
                 current = current.explore()
                 #print('explore', level+1, current.number_visits)
@@ -80,8 +86,8 @@ def BRUE_search(board, num_reads, net=None, C=1.0):
                 current = current.exploit()
                 #print('exploit', level+1, current.number_visits)
             level += 1
-        
-        child_priors, reward, current.uncertainty  = net.evaluate(current.board)
+        prev_depth = level
+        child_priors, reward  = net.evaluate(current.board)
         current.expand(child_priors)
         current.backup(reward)
     

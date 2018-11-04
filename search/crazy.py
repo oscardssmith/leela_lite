@@ -71,7 +71,7 @@ class CRAZYNode():
     def backup(self, reward: float):
         current = self
         # Child nodes are multiplied by -1 because we want max(-opponent eval)
-        while current is not None:
+        while current.parent is not None:
             reward *= -1
             current.number_visits += 1
             delta = reward - current.value
