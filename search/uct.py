@@ -21,8 +21,8 @@ class UCTNode():
         return self.total_value / (1 + self.number_visits)
 
     def U(self):  # returns float
-        return self.prior * math.sqrt(self.parent.number_visits)
-                 / (1 + self.number_visits)
+        return self.prior * (math.sqrt(self.parent.number_visits)
+                 / (1 + self.number_visits))
 
     def best_child(self, C):
         return max(self.children.values(),

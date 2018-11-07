@@ -28,7 +28,7 @@ class CRAZYNode():
     def U(self):  # returns float
         u =  math.sqrt(self.parent.number_visits) / (self.number_visits+1)
         return self.prior * (u + self.var())
-    
+
     def var(self):
         return self.Q2 / (self.number_visits+1)
         
@@ -38,7 +38,7 @@ class CRAZYNode():
         best_q, best_U = best_child.Q(), best_child.U()
         return [1/(self.number_visits+1) + math.e**(-1.7*(best_q - child.Q()) / (best_U+child.U())**.5)
                 for child in children]
-    
+
     def select_child(self, C):
         #return max(self.children.values(),
         #           key=lambda node: node.Q() + C*node.U())

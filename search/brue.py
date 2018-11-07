@@ -22,15 +22,15 @@ class BRUENode():
 
     def Q(self):  # returns float
         return self.value
-        
+
     def exploit(self):
-        children = self.children
-        return max(self.children.Q(), key=lambda node: node.prior+0.)
-    
+        children = self.children.values()
+        return max(children.Q(), key=lambda node: node.prior+0.)
+
     def explore(self):
         children = self.children
         return choices(list(children.Q()), [node.prior for node in children.values()])[0]
-    
+
     def expand(self, child_priors):
         for move, prior in child_priors.items():
             self.add_child(move, prior)
@@ -54,7 +54,7 @@ class BRUENode():
             delta2 = reward - current.value
             current.Q2 += delta * delta2
             current = current.parent
-    
+
     def dump(self, move, C):
         print("---")
         print("move: ", move)
