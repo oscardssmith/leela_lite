@@ -89,8 +89,7 @@ class VOINode:
         print("---")
 
 
-def VOI_search(board, num_reads, net=None):
-    assert(net is not None)
+def VOI_search(board, num_reads, net=None, **kwarks):
     root = VOINode(board)
     for _ in range(num_reads):
         leaf = root.select_leaf()
@@ -100,6 +99,6 @@ def VOI_search(board, num_reads, net=None):
 
     pv = sorted(root.children.items(), key=lambda item: (item[1].Q(), item[1].number_visits), reverse=True)
 
-    print('pv:', [(n[0], n[1].Q(), n[1].number_visits) for n in pv])
+    #print('pv:', [(n[0], n[1].Q(), n[1].number_visits) for n in pv])
     return max(root.children.items(),
                key=lambda item: (item[1].Q(), item[1].number_visits))
