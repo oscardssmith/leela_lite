@@ -4,7 +4,7 @@ import lcztools
 from lcztools import LeelaBoard
 import chess
 from collections import OrderedDict
-
+import random
 
 class UCTNode():
     def __init__(self, board=None, parent=None, move=None, prior=0):
@@ -12,21 +12,25 @@ class UCTNode():
         self.move = move
         self.is_expanded = False
         self.parent = parent  # Optional[UCTNode]
-        self.children = OrderedDict()  # Dict[move, UCTNode]
+        self.children = [] # Dict[move, UCTNode]
         self.prior = prior  # float
-        self.total_value = 0.  # float
+        self.total_value = 0  # float
         self.number_visits = 0  # int
-
+        
     def Q(self):  # returns float
-        return self.total_value / (1 + self.number_visits)
+        if not self.number_visits:
+            return 0 # FPU reduction, parent value like lc0???
+        else:
+            return self.total_value / self.number_visits
 
-    def U(self):  # returns float
-        return self.prior * (math.sqrt(self.parent.number_visits)
-                 / (1 + self.number_visits))
+    def U(self, pvsqrt):  # returns float
+        return pvsqrt * self.prior / (1 + self.number_visits)
 
     def best_child(self, C):
-        return max(self.children.values(),
-                   key=lambda node: node.Q() + C*node.U())
+        pvsqrt = self.number_visits ** 0.5
+        def eval_node(node):
+            return node.Q() + C*node.U(pvsqrt)
+        return max(self.children, key=eval_node)
 
     def select_leaf(self, C):
         current = self
@@ -43,31 +47,17 @@ class UCTNode():
             self.add_child(move, prior)
 
     def add_child(self, move, prior):
-        self.children[move] = UCTNode(parent=self, move=move, prior=prior)
+        self.children.append(UCTNode(parent=self, move=move, prior=prior))
     
     def backup(self, value_estimate: float):
         current = self
-        # Child nodes are multiplied by -1 because we want max(-opponent eval)
-        value_estimate *= -1
-        while current.parent is not None:            
+        while current.parent is not None:    
+            # Child nodes are multiplied by -1 because we want max(-opponent eval)
+            value_estimate *= -1        
             current.number_visits += 1
             current.total_value += value_estimate
             current = current.parent
-            value_estimate *= -1
         current.number_visits += 1
-
-    def dump(self, move, C):
-        print("---")
-        print("move: ", move)
-        print("total value: ", self.total_value)
-        print("visits: ", self.number_visits)
-        print("prior: ", self.prior)
-        print("Q: ", self.Q())
-        print("U: ", self.U())
-        print("BestMove: ", self.Q() + C * self.U())
-        #print("math.sqrt({}) * {} / (1 + {}))".format(self.parent.number_visits,
-        #      self.prior, self.number_visits))
-        print("---")
 
 def UCT_search(board, num_reads, net=None, C=1.0):
     assert(net != None)
@@ -81,8 +71,6 @@ def UCT_search(board, num_reads, net=None, C=1.0):
     #for m, node in sorted(root.children.items(),
     #                      key=lambda item: (item[1].number_visits, item[1].Q())):
     #    node.dump(m, C)
-    #print(root.Q())
-    return max(root.children.items(),
-               key=lambda item: (item[1].number_visits, item[1].Q()))
-
-
+    best_node =  max(root.children,
+               key=lambda node: (node.number_visits, node.Q()))
+    return best_node.move, best_node

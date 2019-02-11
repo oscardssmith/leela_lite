@@ -6,7 +6,7 @@ class NeuralNet:
         super().__init__()
         assert(net != None)
         self.net = net
-        self.evaluate = functools.lru_cache(maxsize=lru_size)(self.evaluate)
+        #self.evaluate = functools.lru_cache(maxsize=lru_size)(self.evaluate)
 
     def evaluate(self, board):
         result = None
@@ -27,7 +27,7 @@ class NeuralNet:
                 # Always return -1.0 when checkmated
                 return dict(), -1.
             
-        policy, value = self.net.evaluate(board)
+        policy, value = self.net.evaluate_debug(board)
         
         value2 = 2.*value - 1.
         #print("value: ", value)

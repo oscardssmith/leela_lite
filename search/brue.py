@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from random import choices
+#from random import choices
 import lcztools
 from lcztools import LeelaBoard
 import chess
