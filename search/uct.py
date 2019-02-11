@@ -14,7 +14,10 @@ class UCTNode():
         self.parent = parent  # Optional[UCTNode]
         self.children = [] # Dict[move, UCTNode]
         self.prior = prior  # float
-        self.total_value = 0  # float
+        if parent == None:
+            self.total_value = 0.  # float
+        else:
+            self.total_value = -1.0
         self.number_visits = 0  # int
         
     def Q(self):  # returns float
