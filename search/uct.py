@@ -19,7 +19,18 @@ class UCTNode():
         else:
             self.total_value = -1.0
         self.number_visits = 0  # int
+    
+    @property
+    def UB(self):
+        return self.Q()+.405*(self.number_visits+1)**-.1
         
+    @property
+    def LB(self):
+        return self.Q()-.405*(self.number_visits+1)**-.1
+        
+    def get_representative_leaf(self):
+        return self
+    
     def Q(self):  # returns float
         if not self.number_visits:
             return 0 # FPU reduction, parent value like lc0???
@@ -54,13 +65,16 @@ class UCTNode():
     
     def backup(self, value_estimate: float):
         current = self
-        while current.parent is not None:    
+        while current.parent is not None and type(current.parent) is UCTNode:    
             # Child nodes are multiplied by -1 because we want max(-opponent eval)
-            value_estimate *= -1        
+            value_estimate *= -1
             current.number_visits += 1
             current.total_value += value_estimate
             current = current.parent
         current.number_visits += 1
+        
+    def __repr__(self):
+        return 'UCTNode: ' + str(self.number_visits)
 
 def UCT_search(board, num_reads, net=None, C=1.0):
     assert(net != None)

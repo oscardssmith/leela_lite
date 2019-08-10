@@ -16,89 +16,72 @@ class VOINode:
         self.move = move
         self.is_expanded = False
         self.parent = parent  # Optional[UCTNode]
-        self.children = OrderedDict()  # Dict[move, UCTNode]
+        self.children = [] # Dict[move, UCTNode]
         self.prior = prior  # float
-        self.total_value = 0  # float
+        if parent == None:
+            self.total_value = 0.  # float
+        else:
+            self.total_value = -1.0
         self.number_visits = 0  # int
-
+        
     def Q(self):  # returns float
-        return self.total_value / (1 + self.number_visits)
+        if not self.number_visits:
+            return 0 # FPU reduction, parent value like lc0???
+        else:
+            return self.total_value / self.number_visits
 
-    def best_child(self):
-        """
-        Take care here: bear in mind that the rewards in the paper are in the region [0, 1]
-        :return: best child
-        """
-        if len(self.children) < 2:
-            return (list(self.children.values()))[0]
+    def U(self, pvsqrt):  # returns float
+        return pvsqrt * self.prior / (1 + self.number_visits)
 
-        alpha, beta = heapq.nlargest(2,
-                                     self.children.values(),
-                                     key=lambda node: node.Q()
-                                     )
-        result = None
-        voi_max = -1
-        for n in self.children.values():
-            voi = n.prior / (1. + n.number_visits)
-            if n == alpha:
-                voi *= (1 + beta.Q()) * math.exp(-0.5 * alpha.number_visits * (alpha.Q() - beta.Q()) ** 2)
-            else:
-                voi *= (1 - alpha.Q()) * math.exp(-0.5 * n.number_visits * (alpha.Q() - n.Q()) ** 2)
-            if voi > voi_max:
-                voi_max = voi
-                result = n
+    def best_child(self, C):
+        pvsqrt = self.number_visits ** 0.5
+        def eval_node(node):
+            return node.Q() + C*node.U(pvsqrt)
+        return max(self.children, key=eval_node)
 
-        return result
-
-    def select_leaf(self):
+    def select_leaf_from_root(self, C):
+        return best.select_leaf(C)
+    
+    def select_leaf(self, C):
         current = self
         while current.is_expanded and current.children:
-            current = current.best_child()
+            current = current.best_child(C)
         if not current.board:
             current.board = current.parent.board.copy()
             current.board.push_uci(current.move)
         return current
-
+        
     def expand(self, child_priors):
         self.is_expanded = True
         for move, prior in child_priors.items():
             self.add_child(move, prior)
 
     def add_child(self, move, prior):
-        self.children[move] = VOINode(parent=self, move=move, prior=prior)
-
+        self.children.append(UCTNode(parent=self, move=move, prior=prior))
+    
     def backup(self, value_estimate: float):
         current = self
-        # Child nodes are multiplied by -1 because we want max(-opponent eval)
-        turnfactor = -1
-        while current.parent is not None:
+        while current.parent is not None:    
+            # Child nodes are multiplied by -1 because we want max(-opponent eval)
+            value_estimate *= -1        
             current.number_visits += 1
-            current.total_value += (value_estimate *
-                                    turnfactor)
+            current.total_value += value_estimate
             current = current.parent
-            turnfactor *= -1
         current.number_visits += 1
-
-    def dump(self, move):
-        print("---")
-        print("move: ", move)
-        print("total value: ", self.total_value)
-        print("visits: ", self.number_visits)
-        print("prior: ", self.prior)
-        print("Q: ", self.Q())
-        print("---")
 
 
 def VOI_search(board, num_reads, net=None, **kwarks):
-    root = VOINode(board)
+    assert(net != None)
+    root = UCTNode(board)
     for _ in range(num_reads):
-        leaf = root.select_leaf()
+        leaf = root.select_leaf_from_root(C)
         child_priors, value_estimate = net.evaluate(leaf.board)
         leaf.expand(child_priors)
         leaf.backup(value_estimate)
 
-    pv = sorted(root.children.items(), key=lambda item: (item[1].Q(), item[1].number_visits), reverse=True)
-
-    #print('pv:', [(n[0], n[1].Q(), n[1].number_visits) for n in pv])
-    return max(root.children.items(),
-               key=lambda item: (item[1].Q(), item[1].number_visits))
+    #for m, node in sorted(root.children.items(),
+    #                      key=lambda item: (item[1].number_visits, item[1].Q())):
+    #    node.dump(m, C)
+    best_node =  max(root.children,
+               key=lambda node: (node.number_visits, node.Q()))
+    return best_node.move, best_node

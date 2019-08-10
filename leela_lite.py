@@ -39,25 +39,25 @@ SELFPLAY = True
 board = LeelaBoard()
 while True:
     if not SELFPLAY:
-        print(board.unicode())
+        print(board)
         print("Enter move: ", end='')
         sys.stdout.flush()
         line = sys.stdin.readline()
         line = line.rstrip()
         board.push_uci(line)
-    print(board.unicode())
+    print(board)
     print("thinking...")
     start = time.time()
-    best, node = search.UCT_search(board, nodes, net=nn, C=3.4)
+    best, node = search.BAI_DAG_search(board, nodes, net=nn)
     elapsed = time.time() - start
-    print("best: ", best)
+    print("best: ", best, node)
     print("Time: {:.3f} nps".format(nodes/elapsed))
-    print(nn.evaluate.cache_info())
+    #print(nn.evaluate.cache_info())
     board.push_uci(best)
     if board.pc_board.is_game_over() or board.is_draw():
         result = board.pc_board.result(claim_draw=True)
         print("Game over... result is {}".format(result))
-        print(board.unicode())
+        print(board)
         print()
         pgn_game = chess.pgn.Game.from_board(board.pc_board) 
         pgn_game.headers['Result'] = result
